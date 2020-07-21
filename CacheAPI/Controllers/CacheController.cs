@@ -10,6 +10,8 @@ using Microsoft.Extensions.Configuration;
 
 namespace CacheAPI.Controllers
 {
+    // TODO: put in authentication
+
     [Route("api/[controller]")]
     [ApiController]
     public class CacheController : ControllerBase
