@@ -10,11 +10,11 @@ namespace CacheAPI.BL
 {
     public class TestsBL
     {
-        public static string TestGet(out bool success, string dictionaryKey = null)
+        public static string TestGet(out bool success)
         {
             using (var client = new HttpClient())
             {
-                var response = client.GetAsync($"https://localhost:44363/api/Cache?cacheKey=a&dictionaryKey={dictionaryKey}").GetAwaiter().GetResult();
+                var response = client.GetAsync($"https://localhost:44363/api/Cache?cacheKey=a").GetAwaiter().GetResult();
                 success = response.IsSuccessStatusCode;
                 if (response.IsSuccessStatusCode)
                 {
@@ -30,20 +30,20 @@ namespace CacheAPI.BL
             }
         }
 
-        public static string TestPost(out bool success, double? cacheSeconds = null)
+        public static string TestPost(out bool success, string key, double? cacheSeconds = null)
         {
             using (var client = new HttpClient())
             {
-                var stubData = new List<KeyValuePair<string, object>>
+                var stubData = new List<string>
                 {
-                    new KeyValuePair<string, object>("a", "testing A"),
-                    new KeyValuePair<string, object>("b", "testing B"),
-                    new KeyValuePair<string, object>("c", "testing C"),
+                    "testing A",
+                    "testing B" ,
+                    "testing C"
                 };
                 string json = JsonConvert.SerializeObject(stubData);
                 HttpContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = client.PostAsync($"https://localhost:44363/api/Cache?cacheKey=a&cacheSeconds={cacheSeconds}", content).GetAwaiter().GetResult();
+                var response = client.PostAsync($"https://localhost:44363/api/Cache?cacheKey={key}&cacheSeconds={cacheSeconds}", content).GetAwaiter().GetResult();
                 success = response.IsSuccessStatusCode;
                 if (response.IsSuccessStatusCode)
                 {
@@ -61,16 +61,16 @@ namespace CacheAPI.BL
 
         public static string TestGetA()
         {
-            var getResult = TestGet(out bool getSuccess, dictionaryKey: "a");
-            return getResult;
+            var getResult = TestGet(out bool getSuccess);
+
             if (getSuccess)
             {
                 return getResult;
             }
-            var postResult = TestPost(out bool postSuccess, cacheSeconds: 1);
+            var postResult = TestPost(out bool postSuccess, "a", cacheSeconds: 1);
             if (postSuccess)
             {
-                getResult = TestGet(out getSuccess, dictionaryKey: "a");
+                getResult = TestGet(out getSuccess);
                 return getResult;
             }
             else

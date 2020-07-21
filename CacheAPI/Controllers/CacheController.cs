@@ -23,11 +23,11 @@ namespace CacheAPI.Controllers
         }
 
         [HttpGet]
-        public IActionResult Get(string cacheKey, string dictionaryKey = null)
+        public IActionResult Get(string cacheKey)
         {
             try
             {
-                var results = new CacheBL(_cache, _iConfiguration).GetFromDictionary(cacheKey, dictionaryKey);
+                var results = new CacheBL(_cache, _iConfiguration).GetFromDictionary(cacheKey);
                 return Ok(results);
             }
             catch (Exception e)
@@ -37,11 +37,11 @@ namespace CacheAPI.Controllers
         }
 
         [HttpDelete]
-        public IActionResult Delete(string cacheKey, string dictionaryKey = null)
+        public IActionResult Delete(string cacheKey)
         {
             try
             {
-                new CacheBL(_cache, _iConfiguration).DeleteFromDictionary(cacheKey, dictionaryKey);
+                new CacheBL(_cache, _iConfiguration).DeleteFromDictionary(cacheKey);
                 return Ok();
             }
             catch (Exception e)
@@ -52,7 +52,7 @@ namespace CacheAPI.Controllers
         }
 
         [HttpPost]
-        public IActionResult Post(string cacheKey, [FromBody] List<KeyValuePair<string, object>> values, double? cacheSeconds = null)
+        public IActionResult Post(string cacheKey, [FromBody] object values, double? cacheSeconds = null)
         {
             try
             {
@@ -64,19 +64,6 @@ namespace CacheAPI.Controllers
                 return NotFound(e.Message);
             }
         }
-
-        [HttpPut]
-        public IActionResult Put(string cacheKey, [FromBody] List<KeyValuePair<string, object>> values)
-        {
-            try
-            {
-                new CacheBL(_cache, _iConfiguration).PutToDictionary(cacheKey, values);
-                return Ok();
-            }
-            catch (Exception e)
-            {
-                return NotFound(e.Message);
-            }
-        }
+      
     }
 }

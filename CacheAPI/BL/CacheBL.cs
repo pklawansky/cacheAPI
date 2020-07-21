@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 
 namespace CacheAPI.BL
 {
@@ -13,37 +16,32 @@ namespace CacheAPI.BL
         private IConfiguration _iConfiguration;
         private readonly double _cacheSeconds;
         private static object _memLock = new object();
+        private static string _allKeysKey = $"AllKeys_{Guid.NewGuid().ToString()}";
 
         public CacheBL(IMemoryCache memoryCache, IConfiguration iConfiguration, double? overrideDefaultCacheSeconds = null)
         {
             _cache = memoryCache;
             _iConfiguration = iConfiguration;
-            _cacheSeconds = overrideDefaultCacheSeconds.HasValue && overrideDefaultCacheSeconds.Value > 0 ? 
-                overrideDefaultCacheSeconds.Value : 
+            _cacheSeconds = overrideDefaultCacheSeconds.HasValue && overrideDefaultCacheSeconds.Value > 0 ?
+                overrideDefaultCacheSeconds.Value :
                 new ConfigurationBL(_iConfiguration).GetDefaultCacheExpirationSeconds();
+
+            lock (_memLock)
+            {
+                if (!_cache.TryGetValue(_allKeysKey, out List<string> keys))
+                {
+                    _cache.Set(_allKeysKey, new List<string>());
+                }
+            }
         }
 
-        public object GetFromDictionary(string cacheKey, string dictionaryKey)
+        public object GetFromDictionary(string cacheKey)
         {
             lock (_memLock)
             {
-                if (_cache.TryGetValue(cacheKey, out Dictionary<string, object> value))
+                if (_cache.TryGetValue(cacheKey, out object value))
                 {
-                    if (dictionaryKey == null)
-                    {
-                        return value.ToArray();
-                    }
-                    else
-                    {
-                        if (value.TryGetValue(dictionaryKey, out object innerValue))
-                        {
-                            return innerValue;
-                        }
-                        else
-                        {
-                            throw new Exception("dictionaryKey does not have a value");
-                        }
-                    }
+                    return value;
                 }
                 else
                 {
@@ -52,27 +50,15 @@ namespace CacheAPI.BL
             }
         }
 
-        public void DeleteFromDictionary(string cacheKey, string dictionaryKey)
+        public void DeleteFromDictionary(string cacheKey)
         {
             lock (_memLock)
             {
+                var allKeys = _cache.Get<List<string>>(_allKeysKey);
                 if (_cache.TryGetValue(cacheKey, out Dictionary<string, object> value))
                 {
-                    if (dictionaryKey == null)
-                    {
-                        _cache.Remove(cacheKey);
-                    }
-                    else
-                    {
-                        if (value.ContainsKey(dictionaryKey))
-                        {
-                            value.Remove(dictionaryKey);
-                        }
-                        else
-                        {
-                            throw new Exception("dictionaryKey does not have a value");
-                        }
-                    }
+                    _cache.Remove(cacheKey);
+                    allKeys.Remove(cacheKey);
                 }
                 else
                 {
@@ -81,42 +67,81 @@ namespace CacheAPI.BL
             }
         }
 
-        public void PostToDictionary(string cacheKey, List<KeyValuePair<string, object>> values)
+        public void PostToDictionary(string cacheKey, object values)
         {
             lock (_memLock)
             {
-                var dicValues = values.ToDictionary(x => x.Key, x => x.Value);
-                _cache.Set(cacheKey, dicValues, new MemoryCacheEntryOptions
+                var allKeys = _cache.Get<List<string>>(_allKeysKey);
+                if (!allKeys.Contains(cacheKey))
+                {
+                    allKeys.Add(cacheKey);
+                }
+
+                _cache.Set(cacheKey, values, new MemoryCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_cacheSeconds)
                 });
             }
         }
 
-        public void PutToDictionary(string cacheKey, List<KeyValuePair<string, object>> values)
+        internal void PersistCacheToDrive()
         {
+            // locking cache only for the get procedure
+            var keyValues = new List<object>();
+            var allKeys = new List<string>();
             lock (_memLock)
             {
-                var dicValues = values.ToDictionary(x => x.Key, x => x.Value);
-                if (_cache.TryGetValue(cacheKey, out Dictionary<string, object> cacheValues))
+                var keysToRemove = new List<string>();
+                allKeys = _cache.Get<List<string>>(_allKeysKey);
+
+                foreach (var key in allKeys)
                 {
-                    foreach (var key in dicValues.Keys)
+                    try
                     {
-                        if (cacheValues.ContainsKey(key))
+                        var value = (System.Text.Json.JsonElement)_cache.Get(key);
+                        var valueRaw = value.GetRawText();
+                        var valueObj = JsonConvert.DeserializeObject<object>(valueRaw);
+                        keyValues.Add(new
                         {
-                            cacheValues[key] = dicValues[key];
-                        }
-                        else
-                        {
-                            cacheValues.Add(key, dicValues[key]);
-                        }
+                            Key = key,
+                            Value = valueObj
+                        });
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                        keysToRemove.Add(key);
                     }
                 }
-                else
+
+                keysToRemove.ForEach(key =>
                 {
-                    throw new Exception("cacheKey does not have a value");
-                }
+                    allKeys.Remove(key);
+                });
+            }
+
+            var fileName = new ConfigurationBL(_iConfiguration).GetPersistentDataFileName();
+            using (var file = File.Create(fileName))
+            {
+                var dataToPrint = JsonConvert.SerializeObject(keyValues);
+                var data = Encoding.ASCII.GetBytes(dataToPrint);
+                file.Write(data, 0, data.Length);
+            }
+        }
+
+        internal object GetCacheFromDrive()
+        {
+            var fileName = new ConfigurationBL(_iConfiguration).GetPersistentDataFileName();
+            using (var file = File.Open(fileName, FileMode.Open))
+            {
+                var data = new byte[file.Length];
+                file.Read(data, 0, Convert.ToInt32(file.Length));
+                var dataFromFile = Encoding.ASCII.GetString(data);
+                var objToReturn = JsonConvert.DeserializeObject<object[]>(dataFromFile);
+                return objToReturn;
             }
         }
     }
+
+
 }

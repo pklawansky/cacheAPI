@@ -20,7 +20,8 @@ namespace CacheAPI.Controllers
         [Route("Test")]
         public IActionResult Test()
         {
-            var result = TestsBL.TestGetA();
+            var result = TestsBL.TestPost(out bool success, "a");
+            result = TestsBL.TestPost(out success, "b");
             return Ok(new { result });
         }
     }
