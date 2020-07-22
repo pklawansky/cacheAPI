@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -65,6 +66,7 @@ namespace CacheAPI.BL
                     throw new Exception("cacheKey does not have a value");
                 }
             }
+            PersistCacheToDrive();
         }
 
         public void PostToDictionary(string cacheKey, object values)
@@ -82,51 +84,59 @@ namespace CacheAPI.BL
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_cacheSeconds)
                 });
             }
+            PersistCacheToDrive();
         }
 
         internal void PersistCacheToDrive()
         {
-            // locking cache only for the get procedure
-            var keyValues = new List<object>();
-            var allKeys = new List<string>();
-            lock (_memLock)
+            var t = new Thread(() =>
             {
-                var keysToRemove = new List<string>();
-                allKeys = _cache.Get<List<string>>(_allKeysKey);
-
-                foreach (var key in allKeys)
+                // locking cache only for the get procedure
+                var keyValues = new List<object>();
+                var allKeys = new List<string>();
+                lock (_memLock)
                 {
-                    try
+                    var keysToRemove = new List<string>();
+                    allKeys = _cache.Get<List<string>>(_allKeysKey);
+
+                    foreach (var key in allKeys)
                     {
-                        var value = (System.Text.Json.JsonElement)_cache.Get(key);
-                        var valueRaw = value.GetRawText();
-                        var valueObj = JsonConvert.DeserializeObject<object>(valueRaw);
-                        keyValues.Add(new
+                        try
                         {
-                            Key = key,
-                            Value = valueObj
-                        });
+                            var value = (System.Text.Json.JsonElement)_cache.Get(key);
+                            var valueRaw = value.GetRawText();
+                            var valueObj = JsonConvert.DeserializeObject<object>(valueRaw);
+                            keyValues.Add(new
+                            {
+                                Key = key,
+                                Value = valueObj
+                            });
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e);
+                            keysToRemove.Add(key);
+                        }
                     }
-                    catch (Exception e)
+
+                    keysToRemove.ForEach(key =>
                     {
-                        Console.WriteLine(e);
-                        keysToRemove.Add(key);
-                    }
+                        allKeys.Remove(key);
+                    });
                 }
 
-                keysToRemove.ForEach(key =>
+                var fileName = new ConfigurationBL(_iConfiguration).GetPersistentDataFileName();
+                using (var file = File.Create(fileName))
                 {
-                    allKeys.Remove(key);
-                });
-            }
-
-            var fileName = new ConfigurationBL(_iConfiguration).GetPersistentDataFileName();
-            using (var file = File.Create(fileName))
-            {
-                var dataToPrint = JsonConvert.SerializeObject(keyValues);
-                var data = Encoding.ASCII.GetBytes(dataToPrint);
-                file.Write(data, 0, data.Length);
-            }
+                    var dataToPrint = JsonConvert.SerializeObject(keyValues);
+                    var data = Encoding.ASCII.GetBytes(dataToPrint);
+                    file.Write(data, 0, data.Length);
+                }
+            })
+            { 
+                IsBackground = false // we want this to finish execution
+            };
+            t.Start();
         }
 
         internal object GetCacheFromDrive()
