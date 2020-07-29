@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Primitives;
 
 namespace CacheAPI.Controllers
 {
@@ -29,7 +30,16 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                var results = new CacheBL(_cache, _iConfiguration).GetFromDictionary(cacheKey);
+                if (!Request.Headers.TryGetValue("Authorization", out StringValues auths))
+                {
+                    throw new Exception("Authorization header not found");
+                }
+                var auth = auths.FirstOrDefault();
+                if (string.IsNullOrWhiteSpace(auth))
+                {
+                    throw new Exception("Authorization header cannot be empty");
+                }
+                var results = new CacheBL(_cache, _iConfiguration, auth).GetFromDictionary(cacheKey);
                 return Ok(results);
             }
             catch (Exception e)
@@ -43,7 +53,16 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                new CacheBL(_cache, _iConfiguration).DeleteFromDictionary(cacheKey);
+                if (!Request.Headers.TryGetValue("Authorization", out StringValues auths))
+                {
+                    throw new Exception("Authorization header not found");
+                }
+                var auth = auths.FirstOrDefault();
+                if (string.IsNullOrWhiteSpace(auth))
+                {
+                    throw new Exception("Authorization header cannot be empty");
+                }
+                new CacheBL(_cache, _iConfiguration, auth).DeleteFromDictionary(cacheKey);
                 return Ok();
             }
             catch (Exception e)
@@ -58,7 +77,16 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                new CacheBL(_cache, _iConfiguration, overrideDefaultCacheSeconds: cacheSeconds).PostToDictionary(cacheKey, values);
+                if (!Request.Headers.TryGetValue("Authorization", out StringValues auths))
+                {
+                    throw new Exception("Authorization header not found");
+                }
+                var auth = auths.FirstOrDefault();
+                if (string.IsNullOrWhiteSpace(auth))
+                {
+                    throw new Exception("Authorization header cannot be empty");
+                }
+                new CacheBL(_cache, _iConfiguration, auth, overrideDefaultCacheSeconds: cacheSeconds).PostToDictionary(cacheKey, values);
                 return Ok();
             }
             catch (Exception e)

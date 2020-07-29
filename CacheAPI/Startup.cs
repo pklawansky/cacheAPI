@@ -27,6 +27,10 @@ namespace CacheAPI
         {
             services.AddControllers();
             services.AddMemoryCache();
+            services.Configure<IISServerOptions>(options =>
+            {
+                options.AutomaticAuthentication = false;
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

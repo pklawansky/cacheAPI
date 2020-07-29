@@ -15,12 +15,14 @@ namespace CacheAPI.BL
     {
         private IMemoryCache _cache;
         private IConfiguration _iConfiguration;
+        private readonly string _auth;
         private readonly double _cacheSeconds;
         private static object _memLock = new object();
         private static string _allKeysKey = $"AllKeys_{Guid.NewGuid().ToString()}";
 
-        public CacheBL(IMemoryCache memoryCache, IConfiguration iConfiguration, double? overrideDefaultCacheSeconds = null)
+        public CacheBL(IMemoryCache memoryCache, IConfiguration iConfiguration, string authorization, double? overrideDefaultCacheSeconds = null)
         {
+            _auth = authorization;
             _cache = memoryCache;
             _iConfiguration = iConfiguration;
             _cacheSeconds = overrideDefaultCacheSeconds.HasValue && overrideDefaultCacheSeconds.Value > 0 ?
@@ -36,11 +38,16 @@ namespace CacheAPI.BL
             }
         }
 
+        private string GetAuthKey(string cacheKey)
+        {
+            return $"{_auth} {cacheKey}";
+        }
+
         public object GetFromDictionary(string cacheKey)
         {
             lock (_memLock)
             {
-                if (_cache.TryGetValue(cacheKey, out object value))
+                if (_cache.TryGetValue(GetAuthKey(cacheKey), out object value))
                 {
                     return value;
                 }
@@ -56,10 +63,10 @@ namespace CacheAPI.BL
             lock (_memLock)
             {
                 var allKeys = _cache.Get<List<string>>(_allKeysKey);
-                if (_cache.TryGetValue(cacheKey, out Dictionary<string, object> value))
+                if (_cache.TryGetValue(GetAuthKey(cacheKey), out Dictionary<string, object> value))
                 {
-                    _cache.Remove(cacheKey);
-                    allKeys.Remove(cacheKey);
+                    _cache.Remove(GetAuthKey(cacheKey));
+                    allKeys.Remove(GetAuthKey(cacheKey));
                 }
                 else
                 {
@@ -74,12 +81,12 @@ namespace CacheAPI.BL
             lock (_memLock)
             {
                 var allKeys = _cache.Get<List<string>>(_allKeysKey);
-                if (!allKeys.Contains(cacheKey))
+                if (!allKeys.Contains(GetAuthKey(cacheKey)))
                 {
-                    allKeys.Add(cacheKey);
+                    allKeys.Add(GetAuthKey(cacheKey));
                 }
 
-                _cache.Set(cacheKey, values, new MemoryCacheEntryOptions
+                _cache.Set(GetAuthKey(cacheKey), values, new MemoryCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_cacheSeconds)
                 });
