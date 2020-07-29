@@ -1,2 +1,2 @@
 # cacheAPI
-simple webapi service to handle centralized, generic, in-memory caching of program data
+dotnet core implementation of a webapi endpoint to maintain a seamless, centralized caching solution
