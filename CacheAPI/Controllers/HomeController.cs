@@ -5,13 +5,19 @@ using System.Threading.Tasks;
 using CacheAPI.BL;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 
 namespace CacheAPI.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    public class HomeController : ControllerBase
+    public class HomeController : BaseController
     {
+        public HomeController(IMemoryCache memoryCache, IConfiguration configuration) : base(memoryCache, configuration)
+        {
+        }
+
         public string Index()
         {
             return "Welcome to caching api";

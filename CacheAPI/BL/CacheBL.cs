@@ -1,146 +1,190 @@
-﻿using System;
+﻿using CacheAPI.Models;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
 
 namespace CacheAPI.BL
 {
     public class CacheBL
     {
-        private IMemoryCache _cache;
-        private IConfiguration _iConfiguration;
-        private readonly string _auth;
-        private readonly double _cacheSeconds;
-        private static object _memLock = new object();
-        private static string _allKeysKey = $"AllKeys_{Guid.NewGuid().ToString()}";
+        private IMemoryCache MemoryCache;
+        private IConfiguration Configuration;
+        private readonly string Authorization;
+        private readonly double CacheSeconds;
+        private static object MemLock = new object();
+        private static string AllKeysKey = $"AllKeys_{Guid.NewGuid().ToString()}";
 
-        public CacheBL(IMemoryCache memoryCache, IConfiguration iConfiguration, string authorization, double? overrideDefaultCacheSeconds = null)
+        public CacheBL(IMemoryCache memoryCache, IConfiguration configuration, string authorization, double? overrideDefaultCacheSeconds = null)
         {
-            _auth = authorization;
-            _cache = memoryCache;
-            _iConfiguration = iConfiguration;
-            _cacheSeconds = overrideDefaultCacheSeconds.HasValue && overrideDefaultCacheSeconds.Value > 0 ?
+            Authorization = authorization;
+            MemoryCache = memoryCache;
+            Configuration = configuration;
+            CacheSeconds = overrideDefaultCacheSeconds.HasValue && overrideDefaultCacheSeconds.Value >= 0 ?
                 overrideDefaultCacheSeconds.Value :
-                new ConfigurationBL(_iConfiguration).GetDefaultCacheExpirationSeconds();
+                new ConfigurationBL(Configuration).GetDefaultCacheExpirationSeconds();
 
-            lock (_memLock)
+            lock (MemLock)
             {
-                if (!_cache.TryGetValue(_allKeysKey, out List<string> keys))
+                if (!MemoryCache.TryGetValue(AllKeysKey, out List<CacheEntry> keys))
                 {
-                    _cache.Set(_allKeysKey, new List<string>());
+                    MemoryCache.Set(AllKeysKey, new List<CacheEntry>());
                 }
             }
         }
 
-        private string GetAuthKey(string cacheKey)
+        private List<CacheEntry> GetAllKeys(string authorization = null)
         {
-            return $"{_auth} {cacheKey}";
+            var allKeys = MemoryCache.Get<List<CacheEntry>>(AllKeysKey);
+            allKeys = allKeys.Where(x => !x.ExpirationDateTime.HasValue || x.ExpirationDateTime.Value < DateTime.Now).ToList();
+
+            if (authorization == null)
+            {
+                return allKeys;
+            }
+            else
+            {
+                return allKeys.Where(x => x.Authorization == authorization).ToList();
+            }
         }
 
-        public object GetFromDictionary(string cacheKey)
+        private void RemoveKeyFromAllKeys(List<CacheEntry> allKeys, string cacheKey)
         {
-            lock (_memLock)
+            var entry = allKeys.FirstOrDefault(x => x.CacheKey == cacheKey && x.Authorization == Authorization);
+            if (entry != null)
             {
-                if (_cache.TryGetValue(GetAuthKey(cacheKey), out object value))
+                allKeys.Remove(entry);
+            }
+        }
+
+        private void AddKeyToAllKeys(List<CacheEntry> allKeys, CacheEntry entry)
+        {
+            RemoveKeyFromAllKeys(allKeys, entry.CacheKey);
+            allKeys.Add(entry.NoPayload());
+        }
+
+        private string GetAuthKey(string cacheKey, string authorization = null)
+        {
+            return $"{(authorization ?? Authorization)} {cacheKey}";
+        }
+
+        public List<CacheEntry> ListFromDictionary()
+        {
+            lock (MemLock)
+            {
+                return GetAllKeys(authorization: Authorization);
+            }
+        }
+
+        public CacheEntry GetFromDictionary(string cacheKey)
+        {
+            lock (MemLock)
+            {
+                if (MemoryCache.TryGetValue(GetAuthKey(cacheKey), out CacheEntry value))
                 {
                     return value;
                 }
                 else
                 {
-                    throw new Exception("cacheKey does not have a value");
+                    return PopulateFromEndpoint(cacheKey);
                 }
             }
         }
 
+        private CacheEntry PopulateFromEndpoint(string cacheKey)
+        {
+            var endpoint = new ConfigurationBL(Configuration).GetAutoPopulateEndpoints().FirstOrDefault(x => x.Authorization == Authorization && x.CacheKey == cacheKey);
+
+            // TODO: make api call to configured endpoint if it exists, expect AutoPopulateResult back
+          
+
+            throw new Exception("cacheKey does not have a value");
+        }
+
         public void DeleteFromDictionary(string cacheKey)
         {
-            lock (_memLock)
+            lock (MemLock)
             {
-                var allKeys = _cache.Get<List<string>>(_allKeysKey);
-                if (_cache.TryGetValue(GetAuthKey(cacheKey), out Dictionary<string, object> value))
+                var allKeys = GetAllKeys();
+                if (MemoryCache.TryGetValue(GetAuthKey(cacheKey), out CacheEntry value))
                 {
-                    _cache.Remove(GetAuthKey(cacheKey));
-                    allKeys.Remove(GetAuthKey(cacheKey));
+                    MemoryCache.Remove(GetAuthKey(cacheKey));
+                    RemoveKeyFromAllKeys(allKeys, cacheKey);
                 }
                 else
                 {
                     throw new Exception("cacheKey does not have a value");
                 }
             }
-            PersistCacheToDrive();
+            PersistCacheToFile();
         }
 
         public void PostToDictionary(string cacheKey, object values)
         {
-            lock (_memLock)
+            lock (MemLock)
             {
-                var allKeys = _cache.Get<List<string>>(_allKeysKey);
-                if (!allKeys.Contains(GetAuthKey(cacheKey)))
-                {
-                    allKeys.Add(GetAuthKey(cacheKey));
-                }
+                var allKeys = GetAllKeys();
 
-                _cache.Set(GetAuthKey(cacheKey), values, new MemoryCacheEntryOptions
+                var entry = new CacheEntry(Authorization, cacheKey, values, expirationSeconds: CacheSeconds);
+                AddKeyToAllKeys(allKeys, entry);
+
+                MemoryCache.Set(GetAuthKey(cacheKey), entry, new MemoryCacheEntryOptions
                 {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_cacheSeconds)
+                    AbsoluteExpirationRelativeToNow = CacheSeconds > 0 ? TimeSpan.FromSeconds(CacheSeconds) : (TimeSpan?)null
                 });
             }
-            PersistCacheToDrive();
+            PersistCacheToFile();
         }
 
-        internal void PersistCacheToDrive()
+        internal void PersistCacheToFile()
         {
+            if (!new ConfigurationBL(Configuration).GetPersistCacheToFile()) return;
+
             var t = new Thread(() =>
             {
                 // locking cache only for the get procedure
-                var keyValues = new List<object>();
-                var allKeys = new List<string>();
-                lock (_memLock)
+                var keyEntries = new List<object>();
+                var allKeys = new List<CacheEntry>();
+                lock (MemLock)
                 {
-                    var keysToRemove = new List<string>();
-                    allKeys = _cache.Get<List<string>>(_allKeysKey);
+                    allKeys = GetAllKeys();
 
                     foreach (var key in allKeys)
                     {
                         try
                         {
-                            var value = (System.Text.Json.JsonElement)_cache.Get(key);
-                            var valueRaw = value.GetRawText();
-                            var valueObj = JsonConvert.DeserializeObject<object>(valueRaw);
-                            keyValues.Add(new
+                            var authKey = GetAuthKey(key.CacheKey, authorization: key.Authorization);
+                            var entry = MemoryCache.Get<CacheEntry>(authKey);
+                            var dataRaw = ((JsonElement)entry.Data).GetRawText();
+                            var dataObj = JsonConvert.DeserializeObject<object>(dataRaw);
+                            keyEntries.Add(new
                             {
-                                Key = key,
-                                Value = valueObj
+                                Key = authKey,
+                                Entry = new CacheEntry(entry.Authorization, entry.CacheKey, dataObj, expirationDateTime: entry.ExpirationDateTime)
                             });
                         }
                         catch (Exception e)
                         {
                             Console.WriteLine(e);
-                            keysToRemove.Add(key);
                         }
                     }
-
-                    keysToRemove.ForEach(key =>
-                    {
-                        allKeys.Remove(key);
-                    });
                 }
 
-                var fileName = new ConfigurationBL(_iConfiguration).GetPersistentDataFileName();
+                var fileName = new ConfigurationBL(Configuration).GetPersistentDataFileName();
                 using (var file = File.Create(fileName))
                 {
-                    var dataToPrint = JsonConvert.SerializeObject(keyValues);
+                    var dataToPrint = JsonConvert.SerializeObject(keyEntries);
                     var data = Encoding.ASCII.GetBytes(dataToPrint);
                     file.Write(data, 0, data.Length);
                 }
             })
-            { 
+            {
                 IsBackground = false // we want this to finish execution
             };
             t.Start();
@@ -148,7 +192,7 @@ namespace CacheAPI.BL
 
         internal object GetCacheFromDrive()
         {
-            var fileName = new ConfigurationBL(_iConfiguration).GetPersistentDataFileName();
+            var fileName = new ConfigurationBL(Configuration).GetPersistentDataFileName();
             using (var file = File.Open(fileName, FileMode.Open))
             {
                 var data = new byte[file.Length];

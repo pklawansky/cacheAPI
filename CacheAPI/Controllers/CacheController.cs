@@ -15,14 +15,25 @@ namespace CacheAPI.Controllers
 
     [Route("api/[controller]")]
     [ApiController]
-    public class CacheController : ControllerBase
+    public class CacheController : BaseController
     {
-        IMemoryCache _cache;
-        IConfiguration _iConfiguration;
-        public CacheController(IMemoryCache memoryCache, IConfiguration iConfiguration)
+        public CacheController(IMemoryCache memoryCache, IConfiguration configuration) : base(memoryCache, configuration)
         {
-            _cache = memoryCache;
-            _iConfiguration = iConfiguration;
+        }
+
+        [Route("List")]
+        [HttpGet]
+        public IActionResult List()
+        {
+            try
+            {
+                var results = new CacheBL(MemoryCache, Configuration, GetAuthorization()).ListFromDictionary();
+                return Ok(results);
+            }
+            catch (Exception e)
+            {
+                return NotFound(e.Message);
+            }
         }
 
         [HttpGet]
@@ -30,16 +41,7 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                if (!Request.Headers.TryGetValue("Authorization", out StringValues auths))
-                {
-                    throw new Exception("Authorization header not found");
-                }
-                var auth = auths.FirstOrDefault();
-                if (string.IsNullOrWhiteSpace(auth))
-                {
-                    throw new Exception("Authorization header cannot be empty");
-                }
-                var results = new CacheBL(_cache, _iConfiguration, auth).GetFromDictionary(cacheKey);
+                var results = new CacheBL(MemoryCache, Configuration, GetAuthorization()).GetFromDictionary(cacheKey);
                 return Ok(results);
             }
             catch (Exception e)
@@ -53,16 +55,7 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                if (!Request.Headers.TryGetValue("Authorization", out StringValues auths))
-                {
-                    throw new Exception("Authorization header not found");
-                }
-                var auth = auths.FirstOrDefault();
-                if (string.IsNullOrWhiteSpace(auth))
-                {
-                    throw new Exception("Authorization header cannot be empty");
-                }
-                new CacheBL(_cache, _iConfiguration, auth).DeleteFromDictionary(cacheKey);
+                new CacheBL(MemoryCache, Configuration, GetAuthorization()).DeleteFromDictionary(cacheKey);
                 return Ok();
             }
             catch (Exception e)
@@ -77,16 +70,7 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                if (!Request.Headers.TryGetValue("Authorization", out StringValues auths))
-                {
-                    throw new Exception("Authorization header not found");
-                }
-                var auth = auths.FirstOrDefault();
-                if (string.IsNullOrWhiteSpace(auth))
-                {
-                    throw new Exception("Authorization header cannot be empty");
-                }
-                new CacheBL(_cache, _iConfiguration, auth, overrideDefaultCacheSeconds: cacheSeconds).PostToDictionary(cacheKey, values);
+                new CacheBL(MemoryCache, Configuration, GetAuthorization(), overrideDefaultCacheSeconds: cacheSeconds).PostToDictionary(cacheKey, values);
                 return Ok();
             }
             catch (Exception e)
