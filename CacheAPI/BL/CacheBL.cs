@@ -56,7 +56,7 @@ namespace CacheAPI.BL
         private List<CacheEntry> GetAllKeys(string authorization = null)
         {
             var allKeys = MemoryCache.Get<List<CacheEntry>>(AllKeysKey);
-            allKeys = allKeys.Where(x => !x.Expiration.HasValue || x.Expiration.Value < DateTime.Now).ToList();
+            allKeys = allKeys.Where(x => !x.Expiration.HasValue || x.Expiration.Value > DateTime.Now).ToList();
 
             if (authorization == null)
             {
@@ -75,12 +75,14 @@ namespace CacheAPI.BL
             {
                 allKeys.Remove(entry);
             }
+            MemoryCache.Set(AllKeysKey, allKeys);
         }
 
         private void AddKeyToAllKeys(List<CacheEntry> allKeys, CacheEntry entry)
         {
             RemoveKeyFromAllKeys(allKeys, entry.CacheKey);
             allKeys.Add(entry.NoPayload());
+            MemoryCache.Set(AllKeysKey, allKeys);
         }
 
         private string GetAuthKey(string cacheKey, string authorization = null)
@@ -128,11 +130,15 @@ namespace CacheAPI.BL
         {
             lock (GetMemlock())
             {
-                var allKeys = GetAllKeys();
+
                 if (MemoryCache.TryGetValue(GetAuthKey(CacheKey), out CacheEntry value))
                 {
                     MemoryCache.Remove(GetAuthKey(CacheKey));
-                    RemoveKeyFromAllKeys(allKeys, CacheKey);
+                    lock (GenericMemLock)
+                    {
+                        var allKeys = GetAllKeys();
+                        RemoveKeyFromAllKeys(allKeys, CacheKey);
+                    }
                 }
             }
             PersistCacheToFile();
@@ -142,10 +148,13 @@ namespace CacheAPI.BL
         {
             lock (GetMemlock())
             {
-                var allKeys = GetAllKeys();
-
                 var entry = new CacheEntry(Authorization, CacheKey, values, expirationSeconds: CacheSeconds);
-                AddKeyToAllKeys(allKeys, entry);
+
+                lock (GenericMemLock)
+                {
+                    var allKeys = GetAllKeys();
+                    AddKeyToAllKeys(allKeys, entry);
+                }
 
                 MemoryCache.Set(GetAuthKey(CacheKey), entry, new MemoryCacheEntryOptions
                 {
