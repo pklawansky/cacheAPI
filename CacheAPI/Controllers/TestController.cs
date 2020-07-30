@@ -12,11 +12,17 @@ namespace CacheAPI.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    public class HomeController : BaseController
+    public class TestController : BaseController
     {
-        public HomeController(IMemoryCache memoryCache, IConfiguration configuration) : base(memoryCache, configuration)
+        #region Initialization
+
+        public TestController(IMemoryCache memoryCache, IConfiguration configuration) : base(memoryCache, configuration)
         {
         }
+
+        #endregion
+
+        #region Endpoints
 
         public string Index()
         {
@@ -30,5 +36,7 @@ namespace CacheAPI.Controllers
             result = TestsBL.TestPost(out success, "b");
             return Ok(new { result });
         }
+
+        #endregion
     }
 }

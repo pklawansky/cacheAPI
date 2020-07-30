@@ -14,12 +14,18 @@ namespace CacheAPI.BL
 {
     public class CacheBL
     {
-        private IMemoryCache MemoryCache;
-        private IConfiguration Configuration;
+        #region Props
+
+        private readonly IMemoryCache MemoryCache;
+        private readonly IConfiguration Configuration;
         private readonly string Authorization;
         private readonly double CacheSeconds;
         private static object MemLock = new object();
         private static string AllKeysKey = $"AllKeys_{Guid.NewGuid().ToString()}";
+
+        #endregion
+
+        #region Initialization
 
         public CacheBL(IMemoryCache memoryCache, IConfiguration configuration, string authorization, double? overrideDefaultCacheSeconds = null)
         {
@@ -28,7 +34,7 @@ namespace CacheAPI.BL
             Configuration = configuration;
             CacheSeconds = overrideDefaultCacheSeconds.HasValue && overrideDefaultCacheSeconds.Value >= 0 ?
                 overrideDefaultCacheSeconds.Value :
-                new ConfigurationBL(Configuration).GetDefaultCacheExpirationSeconds();
+                new ConfigurationBL(Configuration).DefaultCacheExpirationSeconds;
 
             lock (MemLock)
             {
@@ -39,6 +45,10 @@ namespace CacheAPI.BL
             }
         }
 
+        #endregion
+
+        #region Helper Methods
+        
         private List<CacheEntry> GetAllKeys(string authorization = null)
         {
             var allKeys = MemoryCache.Get<List<CacheEntry>>(AllKeysKey);
@@ -74,6 +84,10 @@ namespace CacheAPI.BL
             return $"{(authorization ?? Authorization)} {cacheKey}";
         }
 
+        #endregion
+
+        #region Public Methods
+
         public List<CacheEntry> ListFromDictionary()
         {
             lock (MemLock)
@@ -95,16 +109,6 @@ namespace CacheAPI.BL
                     return PopulateFromEndpoint(cacheKey);
                 }
             }
-        }
-
-        private CacheEntry PopulateFromEndpoint(string cacheKey)
-        {
-            var endpoint = new ConfigurationBL(Configuration).GetAutoPopulateEndpoints().FirstOrDefault(x => x.Authorization == Authorization && x.CacheKey == cacheKey);
-
-            // TODO: make api call to configured endpoint if it exists, expect AutoPopulateResult back
-          
-
-            throw new Exception("cacheKey does not have a value");
         }
 
         public void DeleteFromDictionary(string cacheKey)
@@ -142,9 +146,23 @@ namespace CacheAPI.BL
             PersistCacheToFile();
         }
 
-        internal void PersistCacheToFile()
+        #endregion
+
+        #region Private Methods
+
+        private CacheEntry PopulateFromEndpoint(string cacheKey)
         {
-            if (!new ConfigurationBL(Configuration).GetPersistCacheToFile()) return;
+            var endpoint = new ConfigurationBL(Configuration).AutoPopulateEndpoints.FirstOrDefault(x => x.Authorization == Authorization && x.CacheKey == cacheKey);
+
+            // TODO: make api call to configured endpoint if it exists, expect AutoPopulateResult back
+
+
+            throw new Exception("cacheKey does not have a value");
+        }
+
+        private void PersistCacheToFile()
+        {
+            if (!new ConfigurationBL(Configuration).PersistCacheToFile) return;
 
             var t = new Thread(() =>
             {
@@ -176,7 +194,7 @@ namespace CacheAPI.BL
                     }
                 }
 
-                var fileName = new ConfigurationBL(Configuration).GetPersistentDataFileName();
+                var fileName = new ConfigurationBL(Configuration).PersistentDataFileName;
                 using (var file = File.Create(fileName))
                 {
                     var dataToPrint = JsonConvert.SerializeObject(keyEntries);
@@ -190,9 +208,9 @@ namespace CacheAPI.BL
             t.Start();
         }
 
-        internal object GetCacheFromDrive()
+        private object GetCacheFromDrive()
         {
-            var fileName = new ConfigurationBL(Configuration).GetPersistentDataFileName();
+            var fileName = new ConfigurationBL(Configuration).PersistentDataFileName;
             using (var file = File.Open(fileName, FileMode.Open))
             {
                 var data = new byte[file.Length];
@@ -202,7 +220,7 @@ namespace CacheAPI.BL
                 return objToReturn;
             }
         }
+
+        #endregion
     }
-
-
 }

@@ -17,9 +17,15 @@ namespace CacheAPI.Controllers
     [ApiController]
     public class CacheController : BaseController
     {
+        #region Initialization
+
         public CacheController(IMemoryCache memoryCache, IConfiguration configuration) : base(memoryCache, configuration)
         {
         }
+
+        #endregion
+
+        #region Endpoints
 
         [Route("List")]
         [HttpGet]
@@ -78,6 +84,7 @@ namespace CacheAPI.Controllers
                 return NotFound(e.Message);
             }
         }
-      
+
+        #endregion
     }
 }

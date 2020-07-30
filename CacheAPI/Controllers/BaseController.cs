@@ -13,14 +13,24 @@ namespace CacheAPI.Controllers
     [ApiController]
     public class BaseController : ControllerBase
     {
+        #region Props
+
         protected IMemoryCache MemoryCache;
         protected IConfiguration Configuration;
+
+        #endregion
+
+        #region Initialization
 
         public BaseController(IMemoryCache memoryCache, IConfiguration configuration)
         {
             MemoryCache = memoryCache;
             Configuration = configuration;
         }
+
+        #endregion
+
+        #region Helper Methods
 
         protected string GetAuthorization()
         {
@@ -35,5 +45,7 @@ namespace CacheAPI.Controllers
             }
             return auth;
         }
+
+        #endregion
     }
 }

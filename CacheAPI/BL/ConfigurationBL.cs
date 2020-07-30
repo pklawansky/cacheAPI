@@ -9,36 +9,33 @@ namespace CacheAPI.BL
 {
     public class ConfigurationBL
     {
+        #region Props
+
         private readonly IConfiguration Configuration;
-        private const string MySettings = "MySettings";
-        private const string DefaultCacheExpirationSeconds = "DefaultCacheExpirationSeconds";
-        private const string PersistentDataFileName = "PersistentDataFileName";
-        private const string PersistCacheToFile = "PersistCacheToFile";
-        private const string AutoPopulateEndpoints = "AutoPopulateEndpoints";
+        private const string _MySettings = "MySettings";
+        private const string _DefaultCacheExpirationSeconds = "DefaultCacheExpirationSeconds";
+        private const string _PersistentDataFileName = "PersistentDataFileName";
+        private const string _PersistCacheToFile = "PersistCacheToFile";
+        private const string _AutoPopulateEndpoints = "AutoPopulateEndpoints";
+
+        #endregion
+
+        #region Initialization
 
         public ConfigurationBL(IConfiguration configuration)
         {
             Configuration = configuration;
         }
 
-        public double GetDefaultCacheExpirationSeconds()
-        {
-            return Configuration.GetValue<double>($"{MySettings}:{DefaultCacheExpirationSeconds}");
-        }
+        #endregion
 
-        public string GetPersistentDataFileName()
-        {
-            return Configuration.GetValue<string>($"{MySettings}:{PersistentDataFileName}");
-        }
+        #region Public Configurations
 
-        public bool GetPersistCacheToFile()
-        {
-            return Configuration.GetValue<bool>($"{MySettings}:{PersistCacheToFile}");
-        }
+        public double DefaultCacheExpirationSeconds => Configuration.GetValue<double>($"{_MySettings}:{_DefaultCacheExpirationSeconds}");
+        public string PersistentDataFileName => Configuration.GetValue<string>($"{_MySettings}:{_PersistentDataFileName}");
+        public bool PersistCacheToFile => Configuration.GetValue<bool>($"{_MySettings}:{_PersistCacheToFile}");
+        public List<AutoPopulateEndpoint> AutoPopulateEndpoints => Configuration.GetValue<List<AutoPopulateEndpoint>>($"{_MySettings}:{_AutoPopulateEndpoints}");
 
-        public List<AutoPopulateEndpoint> GetAutoPopulateEndpoints()
-        {
-            return Configuration.GetValue<List<AutoPopulateEndpoint>>($"{MySettings}:{AutoPopulateEndpoints}");
-        }
+        #endregion
     }
 }

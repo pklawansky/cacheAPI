@@ -10,6 +10,8 @@ namespace CacheAPI.BL
 {
     public class TestsBL
     {
+        #region Tests
+
         public static string TestGet(out bool success, string cacheKey)
         {
             using (var client = new HttpClient())
@@ -91,5 +93,7 @@ namespace CacheAPI.BL
                 return postResult;
             }
         }
+
+        #endregion
     }
 }
