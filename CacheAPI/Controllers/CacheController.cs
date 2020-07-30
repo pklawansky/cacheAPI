@@ -33,7 +33,7 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                var results = new CacheBL(MemoryCache, Configuration, GetAuthorization()).ListFromDictionary();
+                var results = new CacheBL(MemoryCache, Configuration, GetAuthorization(), null).ListFromDictionary();
                 return Ok(results);
             }
             catch (Exception e)
@@ -47,7 +47,7 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                var results = new CacheBL(MemoryCache, Configuration, GetAuthorization()).GetFromDictionary(cacheKey);
+                var results = new CacheBL(MemoryCache, Configuration, GetAuthorization(), cacheKey).GetFromDictionary();
                 return Ok(results);
             }
             catch (Exception e)
@@ -61,7 +61,7 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                new CacheBL(MemoryCache, Configuration, GetAuthorization()).DeleteFromDictionary(cacheKey);
+                new CacheBL(MemoryCache, Configuration, GetAuthorization(), cacheKey).DeleteFromDictionary();
                 return Ok();
             }
             catch (Exception e)
@@ -76,7 +76,7 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                new CacheBL(MemoryCache, Configuration, GetAuthorization(), overrideDefaultCacheSeconds: cacheSeconds).PostToDictionary(cacheKey, values);
+                new CacheBL(MemoryCache, Configuration, GetAuthorization(), cacheKey, overrideDefaultCacheSeconds: cacheSeconds).PostToDictionary(values);
                 return Ok();
             }
             catch (Exception e)

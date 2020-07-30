@@ -1,5 +1,6 @@
 ﻿using CacheAPI.Models;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,7 +35,14 @@ namespace CacheAPI.BL
         public double DefaultCacheExpirationSeconds => Configuration.GetValue<double>($"{_MySettings}:{_DefaultCacheExpirationSeconds}");
         public string PersistentDataFileName => Configuration.GetValue<string>($"{_MySettings}:{_PersistentDataFileName}");
         public bool PersistCacheToFile => Configuration.GetValue<bool>($"{_MySettings}:{_PersistCacheToFile}");
-        public List<AutoPopulateEndpoint> AutoPopulateEndpoints => Configuration.GetValue<List<AutoPopulateEndpoint>>($"{_MySettings}:{_AutoPopulateEndpoints}");
+        public List<AutoPopulateEndpoint> AutoPopulateEndpoints
+        {
+            get
+            {
+                var val = (List<AutoPopulateEndpoint>)Configuration.GetSection(_MySettings).GetChildren().First(x=>x.Key == _AutoPopulateEndpoints).Get(typeof(List<AutoPopulateEndpoint>));
+                return val;
+            }
+        }
 
         #endregion
     }

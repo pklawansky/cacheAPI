@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -55,7 +55,10 @@ namespace CacheAPI.BL
                     });
                 }
 
-                string json = JsonConvert.SerializeObject(stubData);
+                string json = JsonSerializer.Serialize(stubData, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
                 HttpContent content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = client.PostAsync($"https://localhost:44363/api/Cache?cacheKey={key}&cacheSeconds={cacheSeconds}", content).GetAwaiter().GetResult();

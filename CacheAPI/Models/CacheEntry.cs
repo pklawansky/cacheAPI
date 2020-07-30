@@ -12,18 +12,18 @@ namespace CacheAPI.Models
             Authorization = authorization;
             CacheKey = cacheKey;
             Data = data;
-            ExpirationDateTime = expirationSeconds.HasValue && expirationSeconds.Value > 0 ? DateTime.Now.AddSeconds(expirationSeconds.Value) : (DateTime?)null;
-            ExpirationDateTime = expirationDateTime.HasValue ? expirationDateTime.Value : ExpirationDateTime;
+            Expiration = expirationSeconds.HasValue && expirationSeconds.Value > 0 ? DateTime.Now.AddSeconds(expirationSeconds.Value) : (DateTime?)null;
+            Expiration = expirationDateTime.HasValue ? expirationDateTime.Value : Expiration;
         }
 
         public string Authorization { get; set; }
         public string CacheKey { get; set; }
-        public DateTime? ExpirationDateTime { get; set; }
+        public DateTime? Expiration { get; set; }
         public object Data { get; set; }
 
         public CacheEntry NoPayload()
         {
-            return new CacheEntry(Authorization, CacheKey, null, expirationDateTime: ExpirationDateTime);
+            return new CacheEntry(Authorization, CacheKey, null, expirationDateTime: Expiration);
         }
     }
 }

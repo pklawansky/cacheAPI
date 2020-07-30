@@ -7,7 +7,7 @@ namespace CacheAPI.Models
 {
     public class AutoPopulateResult
     {
-        public object Data { get; set; }
+        public dynamic Data { get; set; }
         public double? CacheSecondsOverride { get; set; }
     }
 }
