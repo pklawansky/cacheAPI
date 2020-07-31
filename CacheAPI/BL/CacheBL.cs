@@ -170,6 +170,13 @@ namespace CacheAPI.BL
 
         private CacheEntry PopulateFromEndpoint()
         {
+            // TODO: get the endpoint from request headers in case it is a specialized querystring for this specific CacheKey
+
+            //// DO request header stuff, which overrides configuration
+
+
+            // Otherwise use configuration here
+
             var endpoint = new ConfigurationBL(Configuration).AutoPopulateEndpoints.FirstOrDefault(x => x.Authorization == Authorization && x.CacheKey == CacheKey);
 
             // TODO: make api call to configured endpoint if it exists, expect AutoPopulateResult back

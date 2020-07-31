@@ -14,10 +14,12 @@ namespace CacheAPI.Models
             Data = data;
             Expiration = expirationSeconds.HasValue && expirationSeconds.Value > 0 ? DateTime.Now.AddSeconds(expirationSeconds.Value) : (DateTime?)null;
             Expiration = expirationDateTime.HasValue ? expirationDateTime.Value : Expiration;
+            EntryDate = DateTime.Now;
         }
 
         public string Authorization { get; set; }
         public string CacheKey { get; set; }
+        public DateTime EntryDate { get; set; }
         public DateTime? Expiration { get; set; }
         public object Data { get; set; }
 
