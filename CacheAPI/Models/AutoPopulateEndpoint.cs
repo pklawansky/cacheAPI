@@ -7,12 +7,12 @@ namespace CacheAPI.Models
 {
     public class AutoPopulateEndpoint
     {
-        public string BaseURL { get; set; }
-        public string EndpointMethod { get; set; }
-        public string Authorization { get; set; }
-        public string CacheKey { get; set; }
-        public double? CacheSeconds { get; set; }
-        public string EndpointAuthorizationKey { get; set; }
-        public string EndpointAuthorizationValue { get; set; }
+        public string baseURL { get; set; }
+        public string endpointMethod { get; set; }
+        public string authorization { get; set; }
+        public string cacheKey { get; set; }
+        public double? cacheLifespanSeconds { get; set; }
+        public string endpointAuthorizationKey { get; set; }
+        public string endpointAuthorizationValue { get; set; }
     }
 }

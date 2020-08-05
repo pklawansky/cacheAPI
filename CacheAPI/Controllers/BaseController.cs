@@ -22,10 +22,9 @@ namespace CacheAPI.Controllers
 
         #region Initialization
 
-        public BaseController(IMemoryCache memoryCache, IConfiguration configuration)
+        public BaseController(IMemoryCache memoryCache)
         {
             MemoryCache = memoryCache;
-            Configuration = configuration;
         }
 
         #endregion

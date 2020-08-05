@@ -1,0 +1,3 @@
+﻿DONE x	Investigate sockets for performance increase https://docs.microsoft.com/en-us/dotnet/framework/network-programming/socket-code-examples
+x	Use UTF8Json as a serializer https://michaelscodingspot.com/the-battle-of-c-to-json-serializers-in-net-core-3/
+DONE x	Get semaphores working better for multi threaded examples, make use of manualresetevents in order to block access when doing autopopulate, use semaphores to limit traffic

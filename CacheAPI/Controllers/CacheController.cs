@@ -19,7 +19,7 @@ namespace CacheAPI.Controllers
     {
         #region Initialization
 
-        public CacheController(IMemoryCache memoryCache, IConfiguration configuration) : base(memoryCache, configuration)
+        public CacheController(IMemoryCache memoryCache) : base(memoryCache)
         {
         }
 
@@ -27,27 +27,27 @@ namespace CacheAPI.Controllers
 
         #region Endpoints
 
-        [Route("List")]
-        [HttpGet]
-        public IActionResult List()
-        {
-            try
-            {
-                var results = new CacheBL(MemoryCache, Configuration, GetAuthorization(), null).ListFromDictionary();
-                return Ok(results);
-            }
-            catch (Exception e)
-            {
-                return NotFound(e.Message);
-            }
-        }
+        //[Route("List")]
+        //[HttpGet]
+        //public IActionResult List()
+        //{
+        //    try
+        //    {
+        //        var results = new CacheBL(MemoryCache, GetAuthorization(), null).ListFromDictionary();
+        //        return Ok(results);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        return NotFound(e.Message);
+        //    }
+        //}
 
         [HttpGet]
-        public IActionResult Get(string cacheKey)
+        public async Task<IActionResult> Get(string cacheKey)
         {
             try
             {
-                var results = new CacheBL(MemoryCache, Configuration, GetAuthorization(), cacheKey).GetFromDictionary();
+                var results = await new CacheBL(MemoryCache, GetAuthorization(), cacheKey).GetFromDictionary();
                 return Ok(results);
             }
             catch (Exception e)
@@ -61,7 +61,7 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                new CacheBL(MemoryCache, Configuration, GetAuthorization(), cacheKey).DeleteFromDictionary();
+                new CacheBL(MemoryCache, GetAuthorization(), cacheKey).DeleteFromDictionary();
                 return Ok();
             }
             catch (Exception e)
@@ -76,7 +76,7 @@ namespace CacheAPI.Controllers
         {
             try
             {
-                new CacheBL(MemoryCache, Configuration, GetAuthorization(), cacheKey, overrideDefaultCacheSeconds: cacheSeconds).PostToDictionary(values);
+                new CacheBL(MemoryCache, GetAuthorization(), cacheKey, overrideDefaultCacheSeconds: cacheSeconds).PostToDictionary(values);
                 return Ok();
             }
             catch (Exception e)

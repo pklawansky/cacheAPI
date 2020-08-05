@@ -18,6 +18,8 @@ namespace CacheAPI.BL
         private const string _PersistentDataFileName = "PersistentDataFileName";
         private const string _PersistCacheToFile = "PersistCacheToFile";
         private const string _AutoPopulateEndpoints = "AutoPopulateEndpoints";
+        private const string _SemaphoreInitial = "SemaphoreInitial";
+        private const string _WebSocketPort = "WebSocketPort";
 
         #endregion
 
@@ -35,6 +37,7 @@ namespace CacheAPI.BL
         public double DefaultCacheExpirationSeconds => Configuration.GetValue<double>($"{_MySettings}:{_DefaultCacheExpirationSeconds}");
         public string PersistentDataFileName => Configuration.GetValue<string>($"{_MySettings}:{_PersistentDataFileName}");
         public bool PersistCacheToFile => Configuration.GetValue<bool>($"{_MySettings}:{_PersistCacheToFile}");
+        public int SemaphoreInitial => Configuration.GetValue<int>($"{_MySettings}:{_SemaphoreInitial}");
         public List<AutoPopulateEndpoint> AutoPopulateEndpoints
         {
             get
@@ -43,6 +46,8 @@ namespace CacheAPI.BL
                 return val;
             }
         }
+
+        public int WebSocketPort => Configuration.GetValue<int>($"{_MySettings}:{_WebSocketPort}");
 
         #endregion
     }

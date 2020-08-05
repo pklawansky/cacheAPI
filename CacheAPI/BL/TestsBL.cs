@@ -5,6 +5,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Net.Http.Headers;
+using CacheAPI.Models;
 
 namespace CacheAPI.BL
 {
@@ -12,21 +14,27 @@ namespace CacheAPI.BL
     {
         #region Tests
 
-        public static string TestGet(out bool success, string cacheKey)
+        public static CacheEntry TestGet(out bool success, string cacheKey, string authorization = null)
         {
             using (var client = new HttpClient())
             {
+                if (!string.IsNullOrWhiteSpace(authorization))
+                {
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(authorization);
+                }
                 var response = client.GetAsync($"https://localhost:44363/api/Cache?cacheKey={cacheKey}").GetAwaiter().GetResult();
                 success = response.IsSuccessStatusCode;
                 if (response.IsSuccessStatusCode)
                 {
                     var data = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                    Console.WriteLine(data);
-                    return data;
+                    var value = JsonSerializer.Deserialize<CacheEntry>(data);
+
+                    Console.WriteLine(value);
+                    return value;
                 }
                 else
                 {
-                    return response.ReasonPhrase;
+                    throw new Exception(response.ReasonPhrase);
                 }
 
             }
@@ -77,7 +85,7 @@ namespace CacheAPI.BL
             }
         }
 
-        public static string TestGetA()
+        public static CacheEntry TestGetA()
         {
             var getResult = TestGet(out bool getSuccess, "a");
 
@@ -93,7 +101,7 @@ namespace CacheAPI.BL
             }
             else
             {
-                return postResult;
+                return getResult;
             }
         }
 
